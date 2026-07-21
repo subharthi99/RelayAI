@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "private-dictation",
+  "name": "Private dictation",
+  "description": "Fully local transcription inserted at the focused field.",
+  "capture": {
+    "activation": "push_to_talk",
+    "source": "default_microphone"
+  },
+  "transcription": {
+    "adapter_id": "local.whisper_cpp",
+    "settings": {
+      "model": "small"
+    }
+  },
+  "context": [],
+  "refinement": {
+    "enabled": false
+  },
+  "policy": {
+    "local_only": true,
+    "confirm_network_destinations": true,
+    "confirm_executable_destinations": true
+  },
+  "destinations": [
+    {
+      "id": "cursor",
+      "adapter_id": "platform.focused_field",
+      "settings": {}
+    }
+  ]
+}

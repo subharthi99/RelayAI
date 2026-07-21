@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "approved-automation",
+  "name": "Approved automation",
+  "description": "Preview text before sending it to an allowlisted webhook.",
+  "capture": {
+    "activation": "toggle",
+    "source": "default_microphone"
+  },
+  "transcription": {
+    "adapter_id": "local.whisper_cpp",
+    "settings": {
+      "model": "small"
+    }
+  },
+  "context": [],
+  "refinement": {
+    "enabled": false
+  },
+  "policy": {
+    "local_only": false,
+    "confirm_network_destinations": true,
+    "confirm_executable_destinations": true
+  },
+  "destinations": [
+    {
+      "id": "issue-tracker",
+      "adapter_id": "builtin.webhook",
+      "settings": {
+        "endpoint_id": "issue-tracker"
+      }
+    }
+  ]
+}

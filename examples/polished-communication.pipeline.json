@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "polished-communication",
+  "name": "Polished communication",
+  "description": "Local speech recognition with explicitly configured refinement.",
+  "capture": {
+    "activation": "push_to_talk",
+    "source": "default_microphone"
+  },
+  "transcription": {
+    "adapter_id": "local.whisper_cpp",
+    "settings": {
+      "model": "small"
+    }
+  },
+  "context": [
+    {
+      "adapter_id": "platform.active_application",
+      "settings": {}
+    }
+  ],
+  "refinement": {
+    "enabled": true,
+    "adapter": {
+      "adapter_id": "openai_compatible.refinement",
+      "credential_id": "cloud-refinement",
+      "settings": {
+        "endpoint_id": "preferred-refiner",
+        "model": "configured-by-user"
+      }
+    },
+    "prompt_id": "polished-communication"
+  },
+  "policy": {
+    "local_only": false,
+    "confirm_network_destinations": true,
+    "confirm_executable_destinations": true
+  },
+  "destinations": [
+    {
+      "id": "cursor",
+      "adapter_id": "platform.focused_field",
+      "settings": {}
+    }
+  ]
+}
