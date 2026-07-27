@@ -1,5 +1,7 @@
 """RelayAI's policy-aware voice pipeline core."""
 
+__version__ = "0.2.0"
+
 from .engine import PipelineEngine, PreparedRun
 from .destinations import FileDestination, ScriptDestination, WebhookDestination
 from .errors import ConfigurationError, PolicyViolation
@@ -35,6 +37,7 @@ __all__ = [
     "ScriptDestination",
     "SQLiteStore",
     "WebhookDestination",
+    "__version__",
     "export_pipeline",
     "load_pipeline",
 ]

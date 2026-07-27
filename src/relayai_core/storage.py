@@ -92,6 +92,17 @@ class SQLiteStore:
         documents = await asyncio.to_thread(list_sync)
         return tuple(load_pipeline(document) for document in documents)
 
+    async def delete_pipeline(self, pipeline_id: str) -> bool:
+        def delete_sync() -> bool:
+            with self._connect() as connection:
+                cursor = connection.execute(
+                    "DELETE FROM pipelines WHERE id = ?",
+                    (pipeline_id,),
+                )
+                return cursor.rowcount > 0
+
+        return await asyncio.to_thread(delete_sync)
+
     async def save_run(self, run: PipelineRun) -> None:
         receipt = json.dumps(asdict(run), sort_keys=True)
 
@@ -136,3 +147,63 @@ class SQLiteStore:
         if not isinstance(value, dict):
             raise ConfigurationError("stored run receipt must be an object")
         return value
+
+    async def list_run_receipts(
+        self,
+        *,
+        pipeline_id: str | None = None,
+        limit: int = 50,
+    ) -> tuple[dict[str, Any], ...]:
+        if limit < 1 or limit > 1000:
+            raise ConfigurationError("run receipt limit must be between 1 and 1000")
+
+        def list_sync() -> list[str]:
+            query = "SELECT receipt_json FROM pipeline_runs"
+            parameters: list[Any] = []
+            if pipeline_id is not None:
+                query += " WHERE pipeline_id = ?"
+                parameters.append(pipeline_id)
+            query += " ORDER BY started_at DESC LIMIT ?"
+            parameters.append(limit)
+            with self._connect() as connection:
+                rows = connection.execute(query, parameters).fetchall()
+                return [str(row["receipt_json"]) for row in rows]
+
+        documents = await asyncio.to_thread(list_sync)
+        receipts: list[dict[str, Any]] = []
+        for document in documents:
+            try:
+                value = json.loads(document)
+            except json.JSONDecodeError as exc:
+                raise ConfigurationError("stored run receipt is invalid") from exc
+            if not isinstance(value, dict):
+                raise ConfigurationError("stored run receipt must be an object")
+            receipts.append(value)
+        return tuple(receipts)
+
+    async def delete_run_receipts(
+        self,
+        *,
+        pipeline_id: str | None = None,
+        completed_before: float | None = None,
+    ) -> int:
+        clauses: list[str] = []
+        parameters: list[Any] = []
+        if pipeline_id is not None:
+            clauses.append("pipeline_id = ?")
+            parameters.append(pipeline_id)
+        if completed_before is not None:
+            clauses.append("completed_at IS NOT NULL AND completed_at < ?")
+            parameters.append(completed_before)
+        if not clauses:
+            raise ConfigurationError(
+                "receipt deletion requires pipeline_id or completed_before"
+            )
+
+        def delete_sync() -> int:
+            query = "DELETE FROM pipeline_runs WHERE " + " AND ".join(clauses)
+            with self._connect() as connection:
+                cursor = connection.execute(query, parameters)
+                return cursor.rowcount
+
+        return await asyncio.to_thread(delete_sync)

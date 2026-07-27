@@ -44,6 +44,30 @@ class SQLiteStoreTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(receipt["status"], "succeeded")
             self.assertEqual(receipt["raw_transcript"], "hello")
 
+            listed = await store.list_run_receipts(
+                pipeline_id="private",
+                limit=10,
+            )
+            self.assertEqual(len(listed), 1)
+            self.assertEqual(listed[0]["id"], run.id)
+
+            deleted = await store.delete_run_receipts(pipeline_id="private")
+            self.assertEqual(deleted, 1)
+            self.assertEqual(await store.list_run_receipts(limit=10), ())
+
+            self.assertTrue(await store.delete_pipeline("private"))
+            self.assertFalse(await store.delete_pipeline("private"))
+
+    async def test_receipt_queries_require_safe_limits_and_delete_filters(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteStore(Path(directory) / "relayai.sqlite3")
+            await store.initialize()
+
+            with self.assertRaisesRegex(Exception, "between 1 and 1000"):
+                await store.list_run_receipts(limit=0)
+            with self.assertRaisesRegex(Exception, "requires"):
+                await store.delete_run_receipts()
+
 
 if __name__ == "__main__":
     unittest.main()

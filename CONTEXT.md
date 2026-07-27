@@ -157,8 +157,10 @@ the raw transcript. Destination failures never erase transcription artifacts.
 ## V1.5: Open integration layer
 
 - Publish the pipeline JSON schema and adapter contracts.
-- Add a CLI and authenticated localhost API to list pipelines, prepare a run,
-  approve destinations, dispatch, and retrieve receipts.
+- Maintain the 0.2.0 CLI for pipeline validation, database import/export, receipt
+  inspection, and confirmation-gated retention.
+- Extend the 0.2.0 authenticated localhost read API with prepare, approval, and
+  dispatch operations only after concrete audio/provider adapters exist.
 - Add an MCP server through which an agent can request and receive a voice response.
 - Add MCP client destinations limited to explicitly approved tools.
 - Add secret-free pipeline import/export and community templates with declared

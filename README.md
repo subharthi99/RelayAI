@@ -13,7 +13,8 @@ approve side effects before they occur.
 
 > [!IMPORTANT]
 > RelayAI is at an early foundation stage. The policy and pipeline core is
-> executable and tested. The macOS desktop shell, microphone capture, production
+> executable and tested. Version 0.2.0 also provides a CLI and authenticated
+> loopback read API. The macOS desktop shell, microphone capture, production
 > STT/refinement adapters, keychain integration, and focused-field insertion are
 > not implemented yet.
 
@@ -77,13 +78,17 @@ The repository currently provides the executable Python core:
 - strict JSON import/export with secret-field detection;
 - an open JSON Schema for pipeline files;
 - allowlisted file, webhook, and shell-free script destinations; and
-- SQLite persistence for pipeline definitions and execution receipts.
+- SQLite persistence for pipeline definitions and execution receipts;
+- a `relayai` CLI for validation, inspection, import/export, and history
+  retention; and
+- an authenticated, read-only API that can bind only to `127.0.0.1`.
 
 ## Repository layout
 
 ```text
 RelayAI/
 ├── CONTEXT.md                  Product scope, invariants, and roadmap
+├── CHANGELOG.md                Versioned release notes
 ├── DEPLOYMENT.md               Build, release, installation, and rollback guide
 ├── LICENSE                     Apache License 2.0
 ├── README.md                   Project overview and contributor entry point
@@ -92,6 +97,8 @@ RelayAI/
 │   └── pipeline.v1.schema.json Public pipeline schema
 ├── src/relayai_core/
 │   ├── adapters.py             Adapter protocols
+│   ├── api.py                  Authenticated loopback read API
+│   ├── cli.py                  Command-line control plane
 │   ├── destinations.py         Safe reference destinations
 │   ├── engine.py               Prepare/dispatch orchestration
 │   ├── models.py               Public domain models and receipts
@@ -135,6 +142,82 @@ Tests can also run directly from a source checkout without installation:
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
+
+Confirm the installed CLI:
+
+```sh
+relayai --version
+relayai pipeline validate examples/private-dictation.pipeline.json
+relayai pipeline inspect examples/approved-automation.pipeline.json
+```
+
+## Command-line interface
+
+The 0.2.0 CLI makes pipeline management deployable before the desktop UI exists.
+
+Initialize a database and import the example pipelines:
+
+```sh
+relayai database --database relayai.sqlite3 init
+relayai database --database relayai.sqlite3 import \
+  examples/private-dictation.pipeline.json
+relayai database --database relayai.sqlite3 import \
+  examples/polished-communication.pipeline.json
+relayai database --database relayai.sqlite3 list
+```
+
+Export a stored definition:
+
+```sh
+relayai database --database relayai.sqlite3 export private-dictation \
+  --output private-dictation.exported.json
+```
+
+Inspect receipt history:
+
+```sh
+relayai history --database relayai.sqlite3 list --limit 20
+relayai history --database relayai.sqlite3 show <run-id>
+```
+
+History deletion is deliberately filtered and confirmation-gated:
+
+```sh
+relayai history --database relayai.sqlite3 purge \
+  --pipeline-id private-dictation --yes
+```
+
+`purge` rejects an unfiltered deletion and refuses to run without `--yes`.
+
+## Authenticated local API
+
+Start the read-only API with a random bearer token of at least 32 characters:
+
+```sh
+export RELAYAI_API_TOKEN="$(openssl rand -hex 32)"
+relayai serve --database relayai.sqlite3 --port 8765
+```
+
+The server is hard-limited to `127.0.0.1`; it rejects wildcard and external
+bindings. `/health` is public and contains no stored state. Every `/v1/*` route
+requires:
+
+```text
+Authorization: Bearer <token>
+```
+
+Available routes:
+
+- `GET /health`
+- `GET /v1/pipelines`
+- `GET /v1/pipelines/{pipeline_id}`
+- `GET /v1/runs?pipeline_id={id}&limit={1..1000}`
+- `GET /v1/runs/{run_id}`
+
+Run lists are redacted summaries. A specific run endpoint returns the complete
+receipt and may therefore contain transcript text. See
+[`docs/LOCAL_API.md`](docs/LOCAL_API.md) for the complete contract and security
+guidance.
 
 ## Pipeline example
 
@@ -288,6 +371,7 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 - [`CONTEXT.md`](CONTEXT.md) — authoritative product scope and engineering rules
 - [`DEPLOYMENT.md`](DEPLOYMENT.md) — current package deployment and future desktop
   release boundary
+- [`docs/LOCAL_API.md`](docs/LOCAL_API.md) — authenticated loopback API contract
 - [`docs/RelayAI-System-Design-v1.docx`](docs/RelayAI-System-Design-v1.docx) —
   formatted V1 system design
 - [`schemas/pipeline.v1.schema.json`](schemas/pipeline.v1.schema.json) — public
@@ -314,7 +398,7 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 
 ### V1.5
 
-- CLI and authenticated localhost API
+- CLI and authenticated localhost read API — implemented in 0.2.0
 - MCP server for agent-requested voice input
 - Approved MCP tool destinations
 - Secret-free pipeline import/export UI
@@ -342,4 +426,3 @@ databases, recordings, or transcript history.
 Copyright 2026 Subharthi Saha.
 
 Licensed under the [Apache License 2.0](LICENSE).
-

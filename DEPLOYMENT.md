@@ -6,9 +6,9 @@ the planned macOS desktop application.
 
 > [!IMPORTANT]
 > RelayAI does not yet ship a desktop executable or hosted service. The only
-> deployable artifact today is the `relayai-core` Python package. Sections marked
-> **Planned** describe release requirements, not commands that work in the current
-> repository.
+> deployable artifact today is the `relayai-core` Python package and its
+> authenticated loopback API process. Sections marked **Planned** describe release
+> requirements, not commands that work in the current repository.
 
 ## 1. Deployment model
 
@@ -21,9 +21,10 @@ Host application
       -> SQLite pipeline and receipt store
 ```
 
-It does not open a network port, run a daemon, capture audio, or register global
-hotkeys. A host process owns adapter composition, lifecycle, credentials, and the
-database location.
+It does not capture audio or register global hotkeys. The optional `relayai serve`
+command opens a read-only HTTP API on `127.0.0.1`; it cannot bind to an external
+interface. A host process owns adapter composition, lifecycle, credentials, and
+the database location.
 
 Supported current deployment targets:
 
@@ -41,7 +42,7 @@ Supported current deployment targets:
 | Runtime packages | Python standard library only | Tauri/platform dependencies |
 | Persistent storage | SQLite path supplied by host | Application Support directory |
 | Secrets | Credential references only | OS keychain |
-| Network | Only through registered network adapters | User-policy dependent |
+| Network | Optional authenticated loopback API and registered adapters | User-policy dependent |
 
 Build tooling may require `build`, `pip`, and `setuptools`; these are build-time
 tools and are not imported by `relayai-core` at runtime.
@@ -58,6 +59,7 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e .
 python -m unittest discover -s tests -v
+relayai --version
 ```
 
 For CI or a read-only checkout, installation is optional:
@@ -166,6 +168,17 @@ The host application is responsible for:
 - controlling retention of transcript-bearing receipts; and
 - exposing preview and approval UI before dispatching protected destinations.
 
+### CLI smoke test
+
+```sh
+relayai --version
+relayai pipeline validate examples/private-dictation.pipeline.json
+relayai database --database /tmp/relayai-smoke.sqlite3 init
+relayai database --database /tmp/relayai-smoke.sqlite3 import \
+  examples/private-dictation.pipeline.json
+relayai database --database /tmp/relayai-smoke.sqlite3 list
+```
+
 ## 7. Runtime configuration
 
 ### Pipeline definitions
@@ -258,6 +271,30 @@ Recommended initial operational gates:
 - stable schema round trips; and
 - successful clean-environment package installation.
 
+### Local API deployment
+
+Generate a new token for each deployment environment:
+
+```sh
+export RELAYAI_API_TOKEN="$(openssl rand -hex 32)"
+relayai serve --database /absolute/path/to/relayai.sqlite3 --port 8765
+```
+
+Operational requirements:
+
+- keep the token out of command arguments, pipeline files, logs, and shell
+  history;
+- restrict access to the environment of the RelayAI process;
+- use a database path writable only by the intended local user;
+- supervise the process with the operating system's user-level service manager
+  if persistent execution is required;
+- probe `GET /health` for process health;
+- send the bearer token on every `/v1/*` request; and
+- rotate the token when local access may have been exposed.
+
+The V1 API is intentionally read-only. Do not place a reverse proxy in front of
+it or expose it through port forwarding. See [`docs/LOCAL_API.md`](docs/LOCAL_API.md).
+
 Latency and reliability SLOs must be established after real audio and provider
 adapters exist; numeric production targets would be speculative today.
 
@@ -323,10 +360,13 @@ Input Monitoring, and keychain permission failures are recoverable in product UI
 The first CI workflow should run on every pull request and protected branch:
 
 ```sh
-PYTHONPATH=src python3 -m unittest discover -s tests -v
+/usr/bin/env PYTHONPATH=src python3.11 -m unittest discover -s tests -v
 python3 -m json.tool schemas/pipeline.v1.schema.json >/dev/null
 git diff --check
 ```
+
+API integration tests bind an ephemeral loopback port. CI sandboxes must permit
+local socket binding.
 
 A release workflow should be added only after the repository has a chosen package
 registry, protected release environment, changelog policy, and maintainer approval
