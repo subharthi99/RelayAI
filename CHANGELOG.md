@@ -4,6 +4,15 @@ All notable changes to RelayAI are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Contributor guide, community code of conduct, and security reporting policy.
+- Structured GitHub bug-report and feature-proposal forms.
+- Pull-request checklist and code ownership rules for safety-critical surfaces.
+- GitHub Actions testing across Python 3.11, 3.12, and 3.13.
+
 ## [0.2.0] — 2026-07-26
 
 ### Added

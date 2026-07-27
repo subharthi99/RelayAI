@@ -408,18 +408,18 @@ See [`CONTEXT.md`](CONTEXT.md) for explicit non-goals and later-stage features.
 
 ## Contributing
 
-The project is early, so architectural consistency matters more than adding many
-provider integrations. Before contributing:
+Contributions are welcome. You can help with the Python core, adapter contracts,
+security tests, documentation, example pipelines, or the future macOS client.
 
-1. Read [`CONTEXT.md`](CONTEXT.md).
-2. Keep capability contracts separate; do not introduce a generic provider type.
-3. Keep provider endpoints, prompts, and credentials out of source code.
-4. Preserve raw transcripts when optional processing fails.
-5. Add tests for new policy or destination behavior.
-6. Update the public schema and compatibility tests for contract changes.
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), then browse
+[open issues](https://github.com/subharthi99/RelayAI/issues). For a substantial
+feature or contract change, open a proposal issue before investing in an
+implementation. Small fixes and documentation improvements can go directly to a
+pull request.
 
-Avoid committing generated environments, model files, credentials, local
-databases, recordings, or transcript history.
+All contributors must follow the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+Please report vulnerabilities privately using the process in
+[`SECURITY.md`](SECURITY.md), not in a public issue.
 
 ## License
 

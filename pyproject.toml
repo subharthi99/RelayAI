@@ -12,6 +12,7 @@ license = "Apache-2.0"
 authors = [
   { name = "Subharthi Saha" },
 ]
+keywords = ["voice", "speech-to-text", "privacy", "automation", "pipelines"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Operating System :: OS Independent",
@@ -22,6 +23,12 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Topic :: Multimedia :: Sound/Audio :: Speech",
 ]
+
+[project.urls]
+Homepage = "https://github.com/subharthi99/RelayAI"
+Documentation = "https://github.com/subharthi99/RelayAI#readme"
+Issues = "https://github.com/subharthi99/RelayAI/issues"
+Repository = "https://github.com/subharthi99/RelayAI"
 
 [project.scripts]
 relayai = "relayai_core.cli:main"

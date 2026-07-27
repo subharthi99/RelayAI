@@ -1,0 +1,50 @@
+name: Feature proposal
+description: Propose a focused product or engineering improvement
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the problem before prescribing an implementation. Please read
+        CONTEXT.md and CONTRIBUTING.md first.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and roadmap documents.
+          required: true
+        - label: This proposal fits the current product boundaries, or explains why they should change.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Who has this problem, and when does it occur?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior without assuming an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Possible approach
+      description: Optional implementation or interface ideas.
+  - type: textarea
+    id: safety
+    attributes:
+      label: Privacy, permissions, and safety
+      description: What data or side effects are involved, and what confirmation is needed?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
