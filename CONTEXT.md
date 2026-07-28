@@ -159,6 +159,9 @@ the raw transcript. Destination failures never erase transcription artifacts.
 - Publish the pipeline JSON schema and adapter contracts.
 - Maintain the 0.2.0 CLI for pipeline validation, database import/export, receipt
   inspection, and confirmation-gated retention.
+- Maintain the 0.3.0 OpenAI-compatible speech and refinement reference adapters,
+  including fixed exposure classification, endpoint allowlisting, and external
+  credential resolution.
 - Extend the 0.2.0 authenticated localhost read API with prepare, approval, and
   dispatch operations only after concrete audio/provider adapters exist.
 - Add an MCP server through which an agent can request and receive a voice response.

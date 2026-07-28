@@ -13,10 +13,10 @@ approve side effects before they occur.
 
 > [!IMPORTANT]
 > RelayAI is at an early foundation stage. The policy and pipeline core is
-> executable and tested. Version 0.2.0 also provides a CLI and authenticated
-> loopback read API. The macOS desktop shell, microphone capture, production
-> STT/refinement adapters, keychain integration, and focused-field insertion are
-> not implemented yet.
+> executable and tested. Version 0.3.0 provides a CLI, authenticated loopback
+> read API, and security-hardened OpenAI-compatible speech and refinement
+> adapters. The macOS desktop shell, microphone capture, bundled local STT,
+> keychain integration, and focused-field insertion are not implemented yet.
 
 ## Why RelayAI?
 
@@ -77,11 +77,14 @@ The repository currently provides the executable Python core:
   artifacts, and destination results;
 - strict JSON import/export with secret-field detection;
 - an open JSON Schema for pipeline files;
-- allowlisted file, webhook, and shell-free script destinations; and
+- allowlisted file, webhook, and shell-free script destinations;
 - SQLite persistence for pipeline definitions and execution receipts;
 - a `relayai` CLI for validation, inspection, import/export, and history
-  retention; and
-- an authenticated, read-only API that can bind only to `127.0.0.1`.
+  retention;
+- an authenticated, read-only API that can bind only to `127.0.0.1`;
+- OpenAI-compatible speech and refinement reference adapters for allowlisted
+  local or cloud endpoints; and
+- an injectable credential resolver contract for future OS keychain integration.
 
 ## Repository layout
 
@@ -99,9 +102,11 @@ RelayAI/
 │   ├── adapters.py             Adapter protocols
 │   ├── api.py                  Authenticated loopback read API
 │   ├── cli.py                  Command-line control plane
+│   ├── credentials.py          External credential resolver contract
 │   ├── destinations.py         Safe reference destinations
 │   ├── engine.py               Prepare/dispatch orchestration
 │   ├── models.py               Public domain models and receipts
+│   ├── openai_compatible.py    Reference speech/refinement providers
 │   ├── policy.py               Enforceable policy rules
 │   ├── registry.py             Trusted adapter registration
 │   ├── serialization.py        Import/export and validation
@@ -153,7 +158,7 @@ relayai pipeline inspect examples/approved-automation.pipeline.json
 
 ## Command-line interface
 
-The 0.2.0 CLI makes pipeline management deployable before the desktop UI exists.
+The CLI makes pipeline management deployable before the desktop UI exists.
 
 Initialize a database and import the example pipelines:
 
@@ -372,6 +377,8 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 - [`DEPLOYMENT.md`](DEPLOYMENT.md) — current package deployment and future desktop
   release boundary
 - [`docs/LOCAL_API.md`](docs/LOCAL_API.md) — authenticated loopback API contract
+- [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — OpenAI-compatible adapter setup and
+  security contract
 - [`docs/RelayAI-System-Design-v1.docx`](docs/RelayAI-System-Design-v1.docx) —
   formatted V1 system design
 - [`schemas/pipeline.v1.schema.json`](schemas/pipeline.v1.schema.json) — public
@@ -385,13 +392,14 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 - Policy preflight and confirmation gates
 - Execution receipts and SQLite persistence
 - Safe reference destinations
+- CLI and authenticated localhost read API
+- OpenAI-compatible cloud speech and local/cloud refinement adapters
 
 ### Next implementation slice
 
 - Tauri macOS shell and React UI
 - Native microphone capture and global hotkeys
 - Local `whisper.cpp` speech adapter
-- OpenAI-compatible speech and refinement adapters
 - OS keychain credential resolution
 - Focused-field and clipboard platform destinations
 - Typed local IPC between Tauri and Python

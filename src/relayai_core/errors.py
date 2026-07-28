@@ -12,3 +12,7 @@ class PolicyViolation(RelayAIError):
 
 class AdapterNotFound(ConfigurationError):
     """A pipeline references an adapter that is not registered."""
+
+
+class ProviderError(RelayAIError):
+    """A provider request failed or returned an invalid response."""

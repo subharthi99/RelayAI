@@ -151,13 +151,13 @@ Do not publish from a working tree containing uncommitted source changes.
 Install a specific wheel by explicit path:
 
 ```sh
-python -m pip install ./relayai_core-0.1.0-py3-none-any.whl
+python -m pip install ./relayai_core-0.3.0-py3-none-any.whl
 ```
 
 For a private package index, pin the exact version:
 
 ```sh
-python -m pip install "relayai-core==0.1.0"
+python -m pip install "relayai-core==0.3.0"
 ```
 
 The host application is responsible for:
@@ -217,6 +217,11 @@ produce an incomplete backup.
 The current core stores only opaque credential references. A production host must
 resolve them from an approved secret store. The macOS desktop target will use the
 Keychain.
+
+OpenAI-compatible adapters accept an injected `CredentialResolver`. Their
+endpoint URLs, exposure classification, and prompt catalogs are trusted host
+configuration rather than pipeline-controlled values. See
+[`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 
 Never place secrets in:
 

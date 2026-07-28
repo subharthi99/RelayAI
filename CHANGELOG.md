@@ -4,7 +4,7 @@ All notable changes to RelayAI are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] — 2026-07-27
 
 ### Added
 
@@ -12,6 +12,22 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Structured GitHub bug-report and feature-proposal forms.
 - Pull-request checklist and code ownership rules for safety-critical surfaces.
 - GitHub Actions testing across Python 3.11, 3.12, and 3.13.
+- OpenAI-compatible speech-transcription and text-refinement adapters.
+- Separate local and network provider configurations with application-owned
+  endpoint allowlists.
+- Injectable credential resolver and standard-library asynchronous HTTP
+  transport.
+- Provider integration and security documentation.
+
+### Security
+
+- Local providers accept only loopback endpoints; network providers require
+  HTTPS.
+- Provider redirects, embedded URL credentials, arbitrary endpoint URLs,
+  oversized uploads/responses, unknown settings, and malformed replies are
+  rejected.
+- Bearer credentials are resolved from opaque IDs and checked for header
+  injection before requests.
 
 ## [0.2.0] — 2026-07-26
 

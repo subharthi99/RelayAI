@@ -1,6 +1,6 @@
 # RelayAI Local API
 
-Version 0.2.0 provides a small authenticated HTTP API for local integrations.
+RelayAI provides a small authenticated HTTP API for local integrations.
 It exposes stored pipeline definitions and execution receipts without allowing
 remote pipeline mutation or action dispatch.
 
@@ -76,7 +76,7 @@ Does not require authentication.
 ```json
 {
   "status": "ok",
-  "version": "0.2.0"
+  "version": "0.3.0"
 }
 ```
 
@@ -165,7 +165,7 @@ An invalid `limit` string returns `limit_must_be_an_integer`.
 
 ## Deliberate omissions
 
-The 0.2.0 API does not support:
+The current API does not support:
 
 - recording or audio upload;
 - pipeline import, update, or deletion;
