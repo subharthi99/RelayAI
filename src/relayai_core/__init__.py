@@ -1,10 +1,15 @@
 """RelayAI's policy-aware voice pipeline core."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 from .credentials import CredentialResolver, MappingCredentialResolver
 from .engine import PipelineEngine, PreparedRun
-from .destinations import FileDestination, ScriptDestination, WebhookDestination
+from .destinations import (
+    FileDestination,
+    ResultDestination,
+    ScriptDestination,
+    WebhookDestination,
+)
 from .errors import ConfigurationError, PolicyViolation, ProviderError
 from .models import (
     AdapterRef,
@@ -19,6 +24,7 @@ from .models import (
 )
 from .serialization import export_pipeline, load_pipeline
 from .storage import SQLiteStore
+from .whisper_cpp import WhisperCppModel, WhisperCppSpeechProvider
 from .openai_compatible import (
     HTTPTransport,
     OpenAICompatibleRefinementProvider,
@@ -46,11 +52,14 @@ __all__ = [
     "PreparedRun",
     "ProviderError",
     "RefinementConfig",
+    "ResultDestination",
     "RunStatus",
     "ScriptDestination",
     "SQLiteStore",
     "StandardLibraryHTTPTransport",
     "WebhookDestination",
+    "WhisperCppModel",
+    "WhisperCppSpeechProvider",
     "__version__",
     "export_pipeline",
     "load_pipeline",

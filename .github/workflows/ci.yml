@@ -45,3 +45,4 @@ jobs:
           relayai pipeline validate examples/private-dictation.pipeline.json
           relayai pipeline validate examples/polished-communication.pipeline.json
           relayai pipeline validate examples/approved-automation.pipeline.json
+          relayai pipeline validate examples/local-audio.pipeline.json

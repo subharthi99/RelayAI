@@ -151,13 +151,13 @@ Do not publish from a working tree containing uncommitted source changes.
 Install a specific wheel by explicit path:
 
 ```sh
-python -m pip install ./relayai_core-0.3.0-py3-none-any.whl
+python -m pip install ./relayai_core-0.4.0-py3-none-any.whl
 ```
 
 For a private package index, pin the exact version:
 
 ```sh
-python -m pip install "relayai-core==0.3.0"
+python -m pip install "relayai-core==0.4.0"
 ```
 
 The host application is responsible for:
@@ -178,6 +178,11 @@ relayai database --database /tmp/relayai-smoke.sqlite3 import \
   examples/private-dictation.pipeline.json
 relayai database --database /tmp/relayai-smoke.sqlite3 list
 ```
+
+Local execution additionally requires an independently installed `whisper-cli`
+binary and GGML model. RelayAI does not download either during package
+installation. See [`docs/LOCAL_EXECUTION.md`](docs/LOCAL_EXECUTION.md) for the
+explicit executable/model allowlist and end-to-end smoke command.
 
 ## 7. Runtime configuration
 

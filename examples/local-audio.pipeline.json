@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "local-audio",
+  "name": "Local audio transcription",
+  "description": "Transcribe an audio file locally and return text in the run receipt.",
+  "capture": {
+    "activation": "push_to_talk",
+    "source": "imported_audio"
+  },
+  "transcription": {
+    "adapter_id": "local.whisper_cpp",
+    "settings": {
+      "model": "small",
+      "language": "auto"
+    }
+  },
+  "context": [],
+  "refinement": {
+    "enabled": false
+  },
+  "policy": {
+    "local_only": true,
+    "confirm_network_destinations": true,
+    "confirm_executable_destinations": true
+  },
+  "destinations": [
+    {
+      "id": "result",
+      "adapter_id": "builtin.result",
+      "settings": {}
+    }
+  ]
+}

@@ -162,6 +162,10 @@ the raw transcript. Destination failures never erase transcription artifacts.
 - Maintain the 0.3.0 OpenAI-compatible speech and refinement reference adapters,
   including fixed exposure classification, endpoint allowlisting, and external
   credential resolution.
+- Maintain the 0.4.0 `whisper.cpp` process adapter and audio-file runner as the
+  headless local execution reference. The desktop application may bundle these
+  components later but must preserve executable/model allowlists, process
+  timeout, cancellation, and receipt behavior.
 - Extend the 0.2.0 authenticated localhost read API with prepare, approval, and
   dispatch operations only after concrete audio/provider adapters exist.
 - Add an MCP server through which an agent can request and receive a voice response.

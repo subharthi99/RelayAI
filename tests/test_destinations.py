@@ -4,12 +4,34 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from relayai_core.destinations import FileDestination, ScriptDestination
+from relayai_core.destinations import (
+    FileDestination,
+    ResultDestination,
+    ScriptDestination,
+)
 from relayai_core.errors import ConfigurationError
 from relayai_core.models import AdapterRef
 
 
 class DestinationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_result_destination_keeps_text_on_run_only(self) -> None:
+        destination = ResultDestination()
+        receipt = await destination.deliver(
+            "hello",
+            AdapterRef(destination.adapter_id, id="result"),
+            {},
+        )
+        self.assertEqual(receipt.status, "succeeded")
+        self.assertEqual(receipt.metadata["character_count"], 5)
+        self.assertNotIn("hello", str(receipt.metadata))
+
+        with self.assertRaisesRegex(ConfigurationError, "does not accept"):
+            await destination.deliver(
+                "hello",
+                AdapterRef(destination.adapter_id, {"unexpected": True}, id="result"),
+                {},
+            )
+
     async def test_file_destination_writes_inside_allowlisted_root(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "nested" / "note.txt"

@@ -13,10 +13,11 @@ approve side effects before they occur.
 
 > [!IMPORTANT]
 > RelayAI is at an early foundation stage. The policy and pipeline core is
-> executable and tested. Version 0.3.0 provides a CLI, authenticated loopback
-> read API, and security-hardened OpenAI-compatible speech and refinement
-> adapters. The macOS desktop shell, microphone capture, bundled local STT,
-> keychain integration, and focused-field insertion are not implemented yet.
+> executable and tested. Version 0.4.0 adds complete audio-file execution through
+> an allowlisted local `whisper.cpp` process, alongside the CLI, authenticated
+> loopback read API, and OpenAI-compatible providers. The macOS desktop shell,
+> live microphone capture, bundled model distribution, keychain integration, and
+> focused-field insertion are not implemented yet.
 
 ## Why RelayAI?
 
@@ -84,7 +85,10 @@ The repository currently provides the executable Python core:
 - an authenticated, read-only API that can bind only to `127.0.0.1`;
 - OpenAI-compatible speech and refinement reference adapters for allowlisted
   local or cloud endpoints; and
-- an injectable credential resolver contract for future OS keychain integration.
+- an injectable credential resolver contract for future OS keychain integration;
+- an allowlisted `whisper.cpp` speech provider with checksum, timeout,
+  cancellation, and bounded-output enforcement; and
+- a `relayai run` path that executes audio files and persists run receipts.
 
 ## Repository layout
 
@@ -110,7 +114,8 @@ RelayAI/
 │   ├── policy.py               Enforceable policy rules
 │   ├── registry.py             Trusted adapter registration
 │   ├── serialization.py        Import/export and validation
-│   └── storage.py              SQLite persistence
+│   ├── storage.py              SQLite persistence
+│   └── whisper_cpp.py          Safe local whisper.cpp process adapter
 └── tests/                      Core behavior and safety tests
 ```
 
@@ -155,6 +160,20 @@ relayai --version
 relayai pipeline validate examples/private-dictation.pipeline.json
 relayai pipeline inspect examples/approved-automation.pipeline.json
 ```
+
+Execute a local audio file after installing `whisper.cpp` and a model:
+
+```sh
+relayai run \
+  --pipeline examples/local-audio.pipeline.json \
+  --audio /path/to/audio.wav \
+  --database relayai.sqlite3 \
+  --whisper-cli /path/to/whisper-cli \
+  --model small=/path/to/ggml-small.bin
+```
+
+See [`docs/LOCAL_EXECUTION.md`](docs/LOCAL_EXECUTION.md) for checksum
+verification, preview-only execution, and file-delivery controls.
 
 ## Command-line interface
 
@@ -251,11 +270,12 @@ guidance.
 }
 ```
 
-Three complete definitions are available in [`examples/`](examples/):
+Four complete definitions are available in [`examples/`](examples/):
 
 - [`private-dictation.pipeline.json`](examples/private-dictation.pipeline.json)
 - [`polished-communication.pipeline.json`](examples/polished-communication.pipeline.json)
 - [`approved-automation.pipeline.json`](examples/approved-automation.pipeline.json)
+- [`local-audio.pipeline.json`](examples/local-audio.pipeline.json)
 
 These examples are product contracts. Some referenced platform and provider
 adapters are intentionally not registered until the desktop implementation is
@@ -377,6 +397,8 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 - [`DEPLOYMENT.md`](DEPLOYMENT.md) — current package deployment and future desktop
   release boundary
 - [`docs/LOCAL_API.md`](docs/LOCAL_API.md) — authenticated loopback API contract
+- [`docs/LOCAL_EXECUTION.md`](docs/LOCAL_EXECUTION.md) — local `whisper.cpp`
+  execution guide
 - [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — OpenAI-compatible adapter setup and
   security contract
 - [`docs/RelayAI-System-Design-v1.docx`](docs/RelayAI-System-Design-v1.docx) —
@@ -394,12 +416,12 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 - Safe reference destinations
 - CLI and authenticated localhost read API
 - OpenAI-compatible cloud speech and local/cloud refinement adapters
+- Local audio-file execution with `whisper.cpp` and persisted receipts
 
 ### Next implementation slice
 
 - Tauri macOS shell and React UI
 - Native microphone capture and global hotkeys
-- Local `whisper.cpp` speech adapter
 - OS keychain credential resolution
 - Focused-field and clipboard platform destinations
 - Typed local IPC between Tauri and Python

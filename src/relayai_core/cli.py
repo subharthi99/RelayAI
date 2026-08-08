@@ -5,15 +5,30 @@ import asyncio
 import json
 import os
 import sys
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
 from . import __version__
 from .api import create_server
+from .destinations import FileDestination, ResultDestination
+from .engine import PipelineEngine
 from .errors import ConfigurationError, RelayAIError
+from .models import AudioArtifact
+from .registry import AdapterRegistry
 from .serialization import export_pipeline, load_pipeline
 from .storage import SQLiteStore
+from .whisper_cpp import WhisperCppModel, WhisperCppSpeechProvider
+
+
+_LOCAL_AUDIO_TYPES = {
+    ".flac": "audio/flac",
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".wav": "audio/wav",
+}
+_MAX_LOCAL_AUDIO_BYTES = 512 * 1024 * 1024
 
 
 def _read_pipeline(path: str) -> Any:
@@ -26,6 +41,43 @@ def _read_pipeline(path: str) -> Any:
 
 def _write_json(value: Any) -> None:
     print(json.dumps(value, indent=2, sort_keys=True))
+
+
+def _named_values(values: Sequence[str], option: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for value in values:
+        name, separator, configured = value.partition("=")
+        if not separator or not name or not configured:
+            raise ConfigurationError(f"{option} must use NAME=VALUE")
+        if name in result:
+            raise ConfigurationError(f"duplicate {option} name: {name}")
+        result[name] = configured
+    return result
+
+
+def _read_audio(path_value: str) -> AudioArtifact:
+    path = Path(path_value)
+    try:
+        if not path.is_file():
+            raise ConfigurationError(f"audio file does not exist: {path}")
+        size = path.stat().st_size
+    except OSError as exc:
+        raise ConfigurationError(f"cannot inspect audio file: {exc}") from exc
+    if size < 1:
+        raise ConfigurationError("audio file cannot be empty")
+    if size > _MAX_LOCAL_AUDIO_BYTES:
+        raise ConfigurationError("audio file exceeds the 512 MiB local limit")
+    try:
+        media_type = _LOCAL_AUDIO_TYPES[path.suffix.lower()]
+    except KeyError as exc:
+        raise ConfigurationError(
+            "local audio must be FLAC, MP3, OGG, or WAV"
+        ) from exc
+    try:
+        content = path.read_bytes()
+    except OSError as exc:
+        raise ConfigurationError(f"cannot read audio file: {exc}") from exc
+    return AudioArtifact(content, media_type)
 
 
 def _pipeline_summary(pipeline: Any) -> dict[str, Any]:
@@ -148,6 +200,56 @@ async def _history(args: argparse.Namespace) -> int:
     raise AssertionError(f"unknown history command: {args.history_command}")
 
 
+async def _run_local(args: argparse.Namespace) -> int:
+    model_paths = _named_values(args.model, "--model")
+    checksums = _named_values(args.model_sha256, "--model-sha256")
+    unknown_checksums = set(checksums) - set(model_paths)
+    if unknown_checksums:
+        raise ConfigurationError(
+            "--model-sha256 references unknown models: "
+            f"{sorted(unknown_checksums)}"
+        )
+    if args.prepare_only and args.approve_destination:
+        raise ConfigurationError(
+            "--approve-destination cannot be used with --prepare-only"
+        )
+    models = {
+        model_id: WhisperCppModel(Path(path), checksums.get(model_id))
+        for model_id, path in model_paths.items()
+    }
+
+    registry = AdapterRegistry()
+    registry.speech.add(
+        WhisperCppSpeechProvider(
+            args.whisper_cli,
+            models,
+            timeout_seconds=args.timeout_seconds,
+        )
+    )
+    registry.destinations.add(ResultDestination())
+    if args.allow_file_root:
+        registry.destinations.add(FileDestination(args.allow_file_root))
+
+    pipeline = _read_pipeline(args.pipeline)
+    audio = _read_audio(args.audio)
+    store = SQLiteStore(args.database)
+    await store.initialize()
+    await store.save_pipeline(pipeline)
+
+    engine = PipelineEngine(registry)
+    prepared = await engine.prepare(pipeline, audio)
+    if args.prepare_only:
+        run = prepared.run
+    else:
+        run = await engine.dispatch(
+            prepared,
+            approved_destination_ids=args.approve_destination,
+        )
+    await store.save_run(run)
+    _write_json(asdict(run))
+    return 0
+
+
 def _serve(args: argparse.Namespace) -> int:
     token = os.environ.get(args.token_env)
     if token is None:
@@ -216,6 +318,49 @@ def build_parser() -> argparse.ArgumentParser:
     history_purge.add_argument("--before")
     history_purge.add_argument("--yes", action="store_true")
 
+    run = commands.add_parser(
+        "run",
+        help="execute a local whisper.cpp pipeline from an audio file",
+    )
+    run.add_argument("--pipeline", required=True)
+    run.add_argument("--audio", required=True)
+    run.add_argument("--database", required=True)
+    run.add_argument("--whisper-cli", required=True)
+    run.add_argument(
+        "--model",
+        action="append",
+        required=True,
+        metavar="NAME=PATH",
+        help="allowlist a pipeline model name and local model path",
+    )
+    run.add_argument(
+        "--model-sha256",
+        action="append",
+        default=[],
+        metavar="NAME=HEX",
+        help="verify an allowlisted model before every execution",
+    )
+    run.add_argument(
+        "--allow-file-root",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="allow builtin.file destinations below this root",
+    )
+    run.add_argument(
+        "--approve-destination",
+        action="append",
+        default=[],
+        metavar="ID",
+        help="approve a configured protected destination instance",
+    )
+    run.add_argument(
+        "--prepare-only",
+        action="store_true",
+        help="transcribe and refine without delivering to destinations",
+    )
+    run.add_argument("--timeout-seconds", type=float, default=180)
+
     serve = commands.add_parser("serve", help="start the authenticated local read API")
     serve.add_argument("--database", required=True)
     serve.add_argument("--port", type=int, default=8765)
@@ -245,6 +390,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return asyncio.run(_database(args))
         if args.command == "history":
             return asyncio.run(_history(args))
+        if args.command == "run":
+            return asyncio.run(_run_local(args))
         if args.command == "serve":
             return _serve(args)
         parser.error(f"unknown command: {args.command}")

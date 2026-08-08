@@ -26,6 +26,27 @@ def _required_setting(config: AdapterRef, name: str) -> str:
     return value
 
 
+class ResultDestination:
+    """Leaves final text on the run receipt for a calling host to consume."""
+
+    adapter_id = "builtin.result"
+    exposure = Exposure.LOCAL
+    effect = DestinationEffect.PASSIVE
+
+    async def deliver(
+        self, text: str, config: AdapterRef, run_metadata: dict[str, Any]
+    ) -> DestinationReceipt:
+        if config.settings:
+            raise ConfigurationError("builtin.result does not accept settings")
+        return DestinationReceipt(
+            destination_id=config.instance_id,
+            adapter_id=self.adapter_id,
+            status="succeeded",
+            effect=self.effect,
+            metadata={"character_count": len(text)},
+        )
+
+
 class FileDestination:
     adapter_id = "builtin.file"
     exposure = Exposure.LOCAL

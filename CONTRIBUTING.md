@@ -96,6 +96,7 @@ python -m json.tool schemas/pipeline.v1.schema.json >/dev/null
 relayai pipeline validate examples/private-dictation.pipeline.json
 relayai pipeline validate examples/polished-communication.pipeline.json
 relayai pipeline validate examples/approved-automation.pipeline.json
+relayai pipeline validate examples/local-audio.pipeline.json
 ```
 
 Safety-sensitive changes need regression tests. This includes policy preflight,

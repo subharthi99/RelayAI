@@ -4,6 +4,27 @@ All notable changes to RelayAI are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-08-08
+
+### Added
+
+- Allowlisted local `whisper.cpp` speech provider using the upstream
+  `whisper-cli` JSON contract.
+- `relayai run` for executing a pipeline from FLAC, MP3, OGG, or WAV audio.
+- Named model path allowlists with optional SHA-256 verification.
+- Prepare-only execution, explicit destination approvals, optional file roots,
+  and automatic SQLite pipeline/run persistence.
+- Passive `builtin.result` destination for returning text to headless callers.
+- Runnable local audio pipeline example and detailed setup guide.
+
+### Security
+
+- `whisper-cli` executes without a shell and accepts no pipeline-controlled
+  executable, model path, or arbitrary argument list.
+- Child processes are killed on timeout or cancellation.
+- Temporary audio/output files are isolated and removed after execution.
+- Process diagnostics, audio input, and JSON output have explicit bounds.
+
 ## [0.3.0] — 2026-07-27
 
 ### Added
