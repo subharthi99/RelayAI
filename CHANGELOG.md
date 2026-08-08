@@ -4,6 +4,15 @@ All notable changes to RelayAI are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] — 2026-08-08
+
+### Fixed
+
+- Explicitly close every short-lived SQLite connection, preventing Python 3.13
+  `ResourceWarning` output and file-descriptor leaks.
+- Update GitHub Actions to Node.js 24-compatible checkout and Python setup
+  actions.
+
 ## [0.4.0] — 2026-08-08
 
 ### Added

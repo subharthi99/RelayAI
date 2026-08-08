@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +15,15 @@ from relayai_core.storage import SQLiteStore
 
 
 class SQLiteStoreTests(unittest.IsolatedAsyncioTestCase):
+    async def test_connection_context_closes_connection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = SQLiteStore(Path(directory) / "relayai.sqlite3")
+            with store._connect() as connection:
+                connection.execute("SELECT 1")
+
+            with self.assertRaisesRegex(sqlite3.ProgrammingError, "closed"):
+                connection.execute("SELECT 1")
+
     async def test_pipeline_and_run_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = SQLiteStore(Path(directory) / "relayai.sqlite3")

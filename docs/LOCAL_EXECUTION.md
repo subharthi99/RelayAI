@@ -1,6 +1,6 @@
 # Local audio execution
 
-RelayAI 0.4.0 can execute a complete local pipeline from an existing audio file
+RelayAI 0.4.1 can execute a complete local pipeline from an existing audio file
 using `whisper.cpp`. It performs policy preflight, transcription, local delivery,
 and SQLite receipt persistence without requiring the desktop client.
 

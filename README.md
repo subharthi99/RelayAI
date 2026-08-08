@@ -13,7 +13,7 @@ approve side effects before they occur.
 
 > [!IMPORTANT]
 > RelayAI is at an early foundation stage. The policy and pipeline core is
-> executable and tested. Version 0.4.0 adds complete audio-file execution through
+> executable and tested. Version 0.4.1 includes complete audio-file execution through
 > an allowlisted local `whisper.cpp` process, alongside the CLI, authenticated
 > loopback read API, and OpenAI-compatible providers. The macOS desktop shell,
 > live microphone capture, bundled model distribution, keychain integration, and

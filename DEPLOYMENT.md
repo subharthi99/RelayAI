@@ -151,13 +151,13 @@ Do not publish from a working tree containing uncommitted source changes.
 Install a specific wheel by explicit path:
 
 ```sh
-python -m pip install ./relayai_core-0.4.0-py3-none-any.whl
+python -m pip install ./relayai_core-0.4.1-py3-none-any.whl
 ```
 
 For a private package index, pin the exact version:
 
 ```sh
-python -m pip install "relayai-core==0.4.0"
+python -m pip install "relayai-core==0.4.1"
 ```
 
 The host application is responsible for:

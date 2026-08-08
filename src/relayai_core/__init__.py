@@ -1,6 +1,6 @@
 """RelayAI's policy-aware voice pipeline core."""
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 from .credentials import CredentialResolver, MappingCredentialResolver
 from .engine import PipelineEngine, PreparedRun
