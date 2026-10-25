@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Build wheels with pip's isolated build environment so clean CI runners install
+  the declared setuptools backend before packaging.
+
 ### Added
 
 - A dependency-free terminal demo covering local execution and receipt history.
