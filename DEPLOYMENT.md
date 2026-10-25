@@ -365,18 +365,23 @@ The desktop release pipeline must eventually perform:
 Do not advertise or distribute a desktop build until microphone, Accessibility,
 Input Monitoring, and keychain permission failures are recoverable in product UI.
 
-## 12. CI recommendation
+## 12. Automated CI
 
-The first CI workflow should run on every pull request and protected branch:
+The checked-in CI workflow runs on every pull request and push to `main`. Its
+required gates are:
 
-```sh
-/usr/bin/env PYTHONPATH=src python3.11 -m unittest discover -s tests -v
-python3 -m json.tool schemas/pipeline.v1.schema.json >/dev/null
-git diff --check
-```
+- the complete suite on Python 3.11, 3.12, and 3.13;
+- `ResourceWarning` promoted to an error;
+- pipeline schema and every example validated;
+- Python compilation, version consistency, and whitespace checked; and
+- a wheel built, installed in a clean environment, and exercised by the terminal
+  demo.
 
 API integration tests bind an ephemeral loopback port. CI sandboxes must permit
 local socket binding.
+
+See [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md) for the latest recorded local
+evidence and reproduction commands.
 
 A release workflow should be added only after the repository has a chosen package
 registry, protected release environment, changelog policy, and maintainer approval

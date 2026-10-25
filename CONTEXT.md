@@ -182,6 +182,15 @@ the raw transcript. Destination failures never erase transcription artifacts.
 4. Sync, teams, agent workflows, and a marketplace only after the local product
    and extension model are stable.
 
+## First usable desktop milestone
+
+The next product milestone is **Desktop Alpha 0.6.0: macOS private dictation**.
+Version 0.5.0 establishes the typed IPC and packaged sidecar boundary; 0.6.0 adds
+live capture, hotkeys, focused-field insertion, permission recovery, history UI,
+and a signed/notarized distribution. The milestone is defined by observable
+release gates rather than completion of every V1 feature. See
+[`docs/MILESTONE_DESKTOP_ALPHA.md`](docs/MILESTONE_DESKTOP_ALPHA.md).
+
 ## Engineering rules
 
 - Never hardcode prompts, provider endpoints, or credentials.

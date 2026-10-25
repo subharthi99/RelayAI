@@ -4,6 +4,19 @@ All notable changes to RelayAI are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A dependency-free terminal demo covering local execution and receipt history.
+- A clean-wheel CI gate in addition to the Python 3.11–3.13 test matrix.
+- Recorded test evidence and a release-gated macOS Desktop Alpha milestone.
+
+### Changed
+
+- CI now treats `ResourceWarning` as a test failure and automatically validates
+  every example pipeline.
+
 ## [0.4.1] — 2026-08-08
 
 ### Fixed

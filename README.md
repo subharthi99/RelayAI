@@ -1,5 +1,7 @@
 # RelayAI
 
+[![CI](https://github.com/subharthi99/RelayAI/actions/workflows/ci.yml/badge.svg)](https://github.com/subharthi99/RelayAI/actions/workflows/ci.yml)
+
 RelayAI is an open-source, policy-aware voice router for developers, technical
 power users, and privacy-conscious professionals.
 
@@ -174,6 +176,30 @@ relayai run \
 
 See [`docs/LOCAL_EXECUTION.md`](docs/LOCAL_EXECUTION.md) for checksum
 verification, preview-only execution, and file-delivery controls.
+
+## 60-second terminal demo
+
+Run a deterministic end-to-end demo without downloading a model or sending data
+over the network:
+
+```sh
+sh scripts/terminal-demo.sh
+```
+
+Expected summary:
+
+```text
+RelayAI terminal demo
+  status:     succeeded
+  transcript: RelayAI routed this voice note locally.
+  exposure:   local
+  receipt:    persisted
+```
+
+The demo creates temporary fixture audio, a model placeholder, and a controlled
+`whisper-cli` substitute. It still exercises the real RelayAI CLI, policy
+preflight, subprocess adapter, destination dispatch, SQLite persistence, and
+history lookup. Use the local-execution guide above for real speech.
 
 ## Command-line interface
 
@@ -387,6 +413,10 @@ python -m unittest discover -s tests -v
 git diff --check
 ```
 
+Current verification evidence and exact reproduction commands are recorded in
+[`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md). Pull requests run the same safety
+suite on Python 3.11, 3.12, and 3.13, then build, install, and demo-test the wheel.
+
 Safety-sensitive changes should include a regression test. In particular, add
 tests for policy boundaries, secret rejection, path containment, command
 allowlisting, confirmation behavior, and transcript preservation during failure.
@@ -399,6 +429,9 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 - [`docs/LOCAL_API.md`](docs/LOCAL_API.md) — authenticated loopback API contract
 - [`docs/LOCAL_EXECUTION.md`](docs/LOCAL_EXECUTION.md) — local `whisper.cpp`
   execution guide
+- [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md) — recorded verification evidence
+- [`docs/MILESTONE_DESKTOP_ALPHA.md`](docs/MILESTONE_DESKTOP_ALPHA.md) — entry,
+  delivery sequence, and release gates for the first usable desktop build
 - [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — OpenAI-compatible adapter setup and
   security contract
 - [`docs/RelayAI-System-Design-v1.docx`](docs/RelayAI-System-Design-v1.docx) —
@@ -420,11 +453,13 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 
 ### Next implementation slice
 
-- Tauri macOS shell and React UI
-- Native microphone capture and global hotkeys
-- OS keychain credential resolution
-- Focused-field and clipboard platform destinations
-- Typed local IPC between Tauri and Python
+- **0.5.0 desktop foundation:** typed IPC, Tauri shell, sidecar lifecycle, and
+  Keychain integration.
+- **0.6.0 first usable desktop alpha:** microphone capture, global hotkeys,
+  focused-field insertion, overlay, history UI, and signed macOS distribution.
+
+The complete milestone and definition of done are in
+[`docs/MILESTONE_DESKTOP_ALPHA.md`](docs/MILESTONE_DESKTOP_ALPHA.md).
 
 ### V1.5
 

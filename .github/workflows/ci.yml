@@ -37,12 +37,60 @@ jobs:
         run: python -m pip install -e .
 
       - name: Run tests
-        run: python -m unittest discover -s tests -v
+        run: python -W error::ResourceWarning -m unittest discover -s tests -v
 
       - name: Validate schema and examples
         run: |
           python -m json.tool schemas/pipeline.v1.schema.json >/dev/null
-          relayai pipeline validate examples/private-dictation.pipeline.json
-          relayai pipeline validate examples/polished-communication.pipeline.json
-          relayai pipeline validate examples/approved-automation.pipeline.json
-          relayai pipeline validate examples/local-audio.pipeline.json
+          for pipeline in examples/*.pipeline.json; do
+            relayai pipeline validate "$pipeline" >/dev/null
+          done
+
+  package:
+    name: Build and smoke-test wheel
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Check source integrity
+        run: |
+          python -m compileall -q src tests
+          git diff --check
+          python - <<'PY'
+          import pathlib
+          import re
+          import tomllib
+
+          project_version = tomllib.loads(
+              pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+          )["project"]["version"]
+          source = pathlib.Path("src/relayai_core/__init__.py").read_text(
+              encoding="utf-8"
+          )
+          package_version = re.search(
+              r'^__version__ = "([^"]+)"$', source, re.MULTILINE
+          ).group(1)
+          assert project_version == package_version
+          PY
+
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
+
+      - name: Install wheel in clean environment
+        run: |
+          python -m venv .ci-venv
+          .ci-venv/bin/python -m pip install --no-deps dist/*.whl
+          .ci-venv/bin/relayai --version
+
+      - name: Run terminal demo against wheel
+        run: |
+          PATH="$PWD/.ci-venv/bin:$PATH" \
+            RELAYAI_DEMO_USE_INSTALLED=1 \
+            sh scripts/terminal-demo.sh
