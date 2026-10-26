@@ -1,6 +1,6 @@
 # Local audio execution
 
-RelayAI 0.4.1 can execute a complete local pipeline from an existing audio file
+RelayAI 0.5.0 can execute a complete local pipeline from an existing audio file
 using `whisper.cpp`. It performs policy preflight, transcription, local delivery,
 and SQLite receipt persistence without requiring the desktop client.
 
@@ -72,6 +72,26 @@ shasum -a 256 /absolute/path/to/ggml-small.bin
 Add `--prepare-only` to stop after transcription and optional refinement. The
 stored receipt remains in `ready` status and has no destination receipts.
 
+Resume without retranscribing, using the receipt ID and the same trusted
+adapter/model configuration:
+
+```sh
+relayai run \
+  --resume-run <run-id> \
+  --database relayai.sqlite3 \
+  --whisper-cli /absolute/path/to/whisper-cli \
+  --model small=/absolute/path/to/ggml-small.bin
+```
+
+The engine supports resuming pending confirmations with explicit approval.
+Successful destinations are not replayed; failed, cancelled, or interrupted
+actions are not automatically retried. The CLI registers only the local
+destinations listed above.
+
+Exit codes: `0` = success or intentional preview, `1` = failed delivery,
+`2` = configuration/provider error, `3` = partial delivery/pending approval,
+`130` = interruption. Execution errors and cancellations remain in history.
+
 ## File delivery
 
 A pipeline may use `builtin.file` only below a root explicitly supplied to the
@@ -83,8 +103,10 @@ relayai run \
   --allow-file-root /absolute/path/to/approved-output
 ```
 
-The file destination resolves the final target and rejects path traversal
-outside the allowed root.
+The file destination traverses directory descriptors without following symlinks.
+Default `mode: "create"` refuses to replace existing files; explicit
+`mode: "overwrite"` atomically replaces, and `mode: "append"` appends.
+Secure file and process delivery currently require POSIX.
 
 ## Runtime guarantees
 
@@ -93,12 +115,15 @@ outside the allowed root.
 - `whisper-cli` is started with an argument vector and never through a shell.
 - Arbitrary extra whisper arguments are rejected.
 - Input and JSON output use a private temporary directory removed after the run.
-- Standard output is discarded and standard error is captured only for bounded
-  diagnostics.
-- Timeouts and task cancellation terminate the child process.
+- Combined stdout/stderr is bounded while read; error receipts contain error
+  classes/status codes rather than raw diagnostics.
+- Timeouts and cancellation terminate the POSIX process group.
 - Audio is limited to 512 MiB and JSON output to 16 MiB by default.
-- Successful prepared or dispatched runs are persisted to the explicit SQLite
-  database.
+- Preparation, exposure attempts, failure, cancellation, and destination receipts
+  are persisted to the explicit SQLite database.
+
+See [audit remediation and trust boundaries](HARDENING_AUDIT.md) for uncertain
+external outcomes, filesystem trust, and retention limits.
 
 The JSON printed by `relayai run` is the complete `PipelineRun`; it includes raw
 and final transcript text and must be handled as sensitive local data.

@@ -15,7 +15,7 @@ approve side effects before they occur.
 
 > [!IMPORTANT]
 > RelayAI is at an early foundation stage. The policy and pipeline core is
-> executable and tested. Version 0.4.1 includes complete audio-file execution through
+> executable and tested. Version 0.5.0 hardens audio-file execution through
 > an allowlisted local `whisper.cpp` process, alongside the CLI, authenticated
 > loopback read API, and OpenAI-compatible providers. The macOS desktop shell,
 > live microphone capture, bundled model distribution, keychain integration, and
@@ -413,9 +413,14 @@ python -m unittest discover -s tests -v
 git diff --check
 ```
 
+Install independent schema-validation test dependencies with
+`python -m pip install -e '.[test]'`.
+
 Current verification evidence and exact reproduction commands are recorded in
 [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md). Pull requests run the same safety
-suite on Python 3.11, 3.12, and 3.13, then build, install, and demo-test the wheel.
+suite on Python 3.11, 3.12, and 3.13 on Linux and macOS, then build, install, and
+demo-test the wheel. A separate pinned real-model integration workflow verifies
+actual transcription.
 
 Safety-sensitive changes should include a regression test. In particular, add
 tests for policy boundaries, secret rejection, path containment, command
@@ -430,6 +435,8 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 - [`docs/LOCAL_EXECUTION.md`](docs/LOCAL_EXECUTION.md) — local `whisper.cpp`
   execution guide
 - [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md) — recorded verification evidence
+- [`docs/HARDENING_AUDIT.md`](docs/HARDENING_AUDIT.md) — audit fixes, compatibility,
+  and precise trust/recovery boundaries
 - [`docs/MILESTONE_DESKTOP_ALPHA.md`](docs/MILESTONE_DESKTOP_ALPHA.md) — entry,
   delivery sequence, and release gates for the first usable desktop build
 - [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — OpenAI-compatible adapter setup and
@@ -453,9 +460,11 @@ allowlisting, confirmation behavior, and transcript preservation during failure.
 
 ### Next implementation slice
 
-- **0.5.0 desktop foundation:** typed IPC, Tauri shell, sidecar lifecycle, and
+- **0.5.0 core hardening:** resumable runs, atomic dispatch, privacy boundaries,
+  bounded processes, and regression tests.
+- **0.6.0 desktop foundation:** typed IPC, Tauri shell, sidecar lifecycle, and
   Keychain integration.
-- **0.6.0 first usable desktop alpha:** microphone capture, global hotkeys,
+- **0.7.0 first usable desktop alpha:** microphone capture, global hotkeys,
   focused-field insertion, overlay, history UI, and signed macOS distribution.
 
 The complete milestone and definition of done are in

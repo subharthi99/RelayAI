@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import hashlib
 import urllib.error
 import urllib.request
 from collections.abc import Mapping
@@ -11,6 +12,7 @@ from uuid import uuid4
 
 from .credentials import CredentialResolver
 from .errors import ConfigurationError, ProviderError
+from .processes import validate_timeout
 from .models import (
     AdapterRef,
     AudioArtifact,
@@ -59,7 +61,32 @@ class StandardLibraryHTTPTransport:
         if max_response_bytes < 1:
             raise ConfigurationError("max_response_bytes must be positive")
         self._max_response_bytes = max_response_bytes
-        self._opener = urllib.request.build_opener(_NoRedirectHandler())
+        # Inherited proxy settings must never turn loopback traffic into egress.
+        self._opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), _NoRedirectHandler()
+        )
+
+    async def post_webhook(self, url, payload, timeout_seconds, idempotency_key):
+        request = urllib.request.Request(
+            url,
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Idempotency-Key": idempotency_key,
+            },
+        )
+
+        def send():
+            try:
+                with self._opener.open(request, timeout=timeout_seconds) as response:
+                    if not 200 <= response.status < 300:
+                        raise ProviderError("webhook returned an unsuccessful status")
+                    return response.status
+            except urllib.error.URLError as exc:
+                raise ProviderError("webhook request failed") from exc
+
+        return await asyncio.to_thread(send)
 
     def _send(
         self,
@@ -70,9 +97,7 @@ class StandardLibraryHTTPTransport:
             with self._opener.open(request, timeout=timeout_seconds) as response:
                 body = response.read(self._max_response_bytes + 1)
         except urllib.error.HTTPError as exc:
-            raise ProviderError(
-                f"provider returned HTTP status {exc.code}"
-            ) from exc
+            raise ProviderError(f"provider returned HTTP status {exc.code}") from exc
         except urllib.error.URLError as exc:
             reason = type(exc.reason).__name__
             raise ProviderError(f"provider connection failed: {reason}") from exc
@@ -122,9 +147,7 @@ class StandardLibraryHTTPTransport:
             chunks.extend(
                 [
                     f"--{boundary}\r\n".encode(),
-                    (
-                        f'Content-Disposition: form-data; name="{name}"\r\n\r\n'
-                    ).encode(),
+                    (f'Content-Disposition: form-data; name="{name}"\r\n\r\n').encode(),
                     value.encode("utf-8"),
                     b"\r\n",
                 ]
@@ -173,8 +196,7 @@ class _OpenAICompatibleBase:
             raise ConfigurationError("exposure must be an Exposure value")
         if not endpoints:
             raise ConfigurationError("at least one endpoint must be configured")
-        if timeout_seconds <= 0:
-            raise ConfigurationError("timeout_seconds must be positive")
+        validate_timeout(timeout_seconds)
         self.adapter_id = adapter_id
         self.exposure = exposure
         self._endpoints = {
@@ -185,6 +207,19 @@ class _OpenAICompatibleBase:
         self._require_credential = require_credential
         self._transport = transport or StandardLibraryHTTPTransport()
         self._timeout_seconds = timeout_seconds
+
+    def configuration_fingerprint(self):
+        # Include prompt content in the binding without storing it in receipts.
+        return hashlib.sha256(
+            json.dumps(
+                [
+                    self._endpoints,
+                    getattr(self, "_prompts", {}),
+                    self._require_credential,
+                ],
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
 
     def _validate_endpoint(self, endpoint_id: str, url: str) -> str:
         if not isinstance(endpoint_id, str) or not endpoint_id:
@@ -209,10 +244,21 @@ class _OpenAICompatibleBase:
                 raise ConfigurationError(
                     f"local endpoint '{endpoint_id}' must use a loopback host"
                 )
+            if parts.hostname.lower() == "localhost":
+                # Do not rely on the machine's hosts/DNS configuration for locality.
+                from urllib.parse import urlunsplit
+
+                url = urlunsplit(
+                    (
+                        parts.scheme,
+                        "127.0.0.1" + (f":{parts.port}" if parts.port else ""),
+                        parts.path,
+                        "",
+                        "",
+                    )
+                )
         elif parts.scheme != "https":
-            raise ConfigurationError(
-                f"network endpoint '{endpoint_id}' must use HTTPS"
-            )
+            raise ConfigurationError(f"network endpoint '{endpoint_id}' must use HTTPS")
         return url.rstrip("/")
 
     def _endpoint(self, config: AdapterRef, path: str) -> str:
@@ -229,14 +275,10 @@ class _OpenAICompatibleBase:
         headers = {"User-Agent": "relayai-core"}
         if config.credential_id is None:
             if self._require_credential:
-                raise ConfigurationError(
-                    f"{self.adapter_id} requires a credential_id"
-                )
+                raise ConfigurationError(f"{self.adapter_id} requires a credential_id")
             return headers
         if self._credential_resolver is None:
-            raise ConfigurationError(
-                f"{self.adapter_id} has no credential resolver"
-            )
+            raise ConfigurationError(f"{self.adapter_id} has no credential resolver")
         secret = self._credential_resolver.resolve(config.credential_id)
         if "\r" in secret or "\n" in secret:
             raise ConfigurationError("resolved bearer credential is not header-safe")
@@ -307,9 +349,7 @@ class OpenAICompatibleSpeechProvider(_OpenAICompatibleBase):
         if response_language is not None and not isinstance(response_language, str):
             raise ProviderError("speech provider language must be a string")
         metadata = {
-            key: response[key]
-            for key in ("duration", "usage")
-            if key in response
+            key: response[key] for key in ("duration", "usage") if key in response
         }
         return TranscriptArtifact(
             text=text,
@@ -357,9 +397,7 @@ class OpenAICompatibleRefinementProvider(_OpenAICompatibleBase):
         config: AdapterRef,
         prompt_id: str | None,
     ) -> str:
-        _reject_unknown_settings(
-            config.settings, _REFINEMENT_SETTINGS, self.adapter_id
-        )
+        _reject_unknown_settings(config.settings, _REFINEMENT_SETTINGS, self.adapter_id)
         if prompt_id is None:
             raise ConfigurationError("refinement requires a prompt_id")
         try:
@@ -415,9 +453,7 @@ class OpenAICompatibleRefinementProvider(_OpenAICompatibleBase):
                 "refinement provider response has no message content"
             ) from exc
         if not isinstance(content, str) or not content.strip():
-            raise ProviderError(
-                "refinement provider response has no message content"
-            )
+            raise ProviderError("refinement provider response has no message content")
         return content
 
 
@@ -449,9 +485,7 @@ def _number(
         raise ConfigurationError(f"{name} must be a number")
     result = float(value)
     if not minimum <= result <= maximum:
-        raise ConfigurationError(
-            f"{name} must be between {minimum:g} and {maximum:g}"
-        )
+        raise ConfigurationError(f"{name} must be between {minimum:g} and {maximum:g}")
     return result
 
 
@@ -479,7 +513,5 @@ def _audio_filename(media_type: str) -> str:
     try:
         extension = extensions[media_type]
     except KeyError as exc:
-        raise ConfigurationError(
-            f"unsupported audio media type: {media_type}"
-        ) from exc
+        raise ConfigurationError(f"unsupported audio media type: {media_type}") from exc
     return f"audio.{extension}"

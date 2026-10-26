@@ -1,0 +1,55 @@
+name: Real whisper.cpp integration
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 10 * * 1"
+  pull_request:
+    paths:
+      - "src/relayai_core/whisper_cpp.py"
+      - "src/relayai_core/processes.py"
+      - "scripts/real_whisper_smoke.py"
+      - ".github/workflows/whisper-integration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  real-speech:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Check out pinned whisper.cpp v1.8.3 source
+        uses: actions/checkout@v6
+        with:
+          repository: ggml-org/whisper.cpp
+          ref: 2eeeba56e9edd762b4b38467bab96c2517163158
+          path: .integration/whisper.cpp
+          persist-credentials: false
+      - name: Build CPU CLI
+        run: |
+          cmake -S .integration/whisper.cpp -B .integration/build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=OFF -DGGML_CUDA=OFF -DWHISPER_BUILD_TESTS=OFF
+          cmake --build .integration/build --target whisper-cli --config Release -j 2
+      - name: Download and verify pinned tiny.en model
+        run: |
+          curl --fail --location --retry 3 --max-time 180 --output .integration/ggml-tiny.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          with Path('.integration/ggml-tiny.en.bin').open('rb') as model:
+              assert hashlib.file_digest(model, 'sha256').hexdigest() == '921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f'
+          PY
+      - name: Install RelayAI and test real transcription
+        run: |
+          python -m pip install -e .
+          python scripts/real_whisper_smoke.py --executable .integration/build/bin/whisper-cli --model .integration/ggml-tiny.en.bin --audio .integration/whisper.cpp/samples/jfk.wav

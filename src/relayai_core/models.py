@@ -25,6 +25,8 @@ class DestinationEffect(StrEnum):
 class RunStatus(StrEnum):
     PREPARING = "preparing"
     READY = "ready"
+    DISPATCHING = "dispatching"
+    CANCELLED = "cancelled"
     PARTIAL = "partial"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
@@ -103,6 +105,7 @@ class ExposureEvent:
     stage: str
     adapter_id: str
     exposure: Exposure
+    outcome: str = "attempted"
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +133,7 @@ class PipelineRun:
     estimated_cost_usd: float | None = None
     warnings: list[str] = field(default_factory=list)
     destinations: list[DestinationReceipt] = field(default_factory=list)
+    error_code: str | None = None
 
     def finish(self, status: RunStatus) -> None:
         self.status = status

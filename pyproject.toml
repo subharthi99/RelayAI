@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "relayai-core"
-version = "0.4.1"
+version = "0.5.0"
 description = "Policy-aware voice pipeline orchestration for RelayAI"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -32,6 +32,9 @@ Repository = "https://github.com/subharthi99/RelayAI"
 
 [project.scripts]
 relayai = "relayai_core.cli:main"
+
+[project.optional-dependencies]
+test = ["jsonschema>=4.23,<5"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

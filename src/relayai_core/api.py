@@ -46,8 +46,10 @@ def create_server(
 
     if host != "127.0.0.1":
         raise ConfigurationError("the local API must bind to 127.0.0.1")
-    if len(token) < 32:
-        raise ConfigurationError("the local API bearer token must be at least 32 characters")
+    if not token.isascii() or len(token) < 32:
+        raise ConfigurationError(
+            "the local API bearer token must be at least 32 characters"
+        )
     if port < 0 or port > 65535:
         raise ConfigurationError("port must be between 0 and 65535")
 
@@ -77,7 +79,8 @@ def create_server(
             prefix = "Bearer "
             if not authorization.startswith(prefix):
                 return False
-            return hmac.compare_digest(authorization[len(prefix) :], token)
+            candidate = authorization[len(prefix) :]
+            return candidate.isascii() and hmac.compare_digest(candidate, token)
 
         def _not_found(self) -> None:
             self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})

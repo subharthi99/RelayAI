@@ -151,13 +151,13 @@ Do not publish from a working tree containing uncommitted source changes.
 Install a specific wheel by explicit path:
 
 ```sh
-python -m pip install ./relayai_core-0.4.1-py3-none-any.whl
+python -m pip install ./relayai_core-0.5.0-py3-none-any.whl
 ```
 
 For a private package index, pin the exact version:
 
 ```sh
-python -m pip install "relayai-core==0.4.1"
+python -m pip install "relayai-core==0.5.0"
 ```
 
 The host application is responsible for:
@@ -370,7 +370,7 @@ Input Monitoring, and keychain permission failures are recoverable in product UI
 The checked-in CI workflow runs on every pull request and push to `main`. Its
 required gates are:
 
-- the complete suite on Python 3.11, 3.12, and 3.13;
+- the complete suite on Python 3.11, 3.12, and 3.13 on Linux and macOS;
 - `ResourceWarning` promoted to an error;
 - pipeline schema and every example validated;
 - Python compilation, version consistency, and whitespace checked; and

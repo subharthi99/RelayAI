@@ -14,6 +14,7 @@ from typing import Any
 
 from .errors import ConfigurationError, ProviderError
 from .models import AdapterRef, AudioArtifact, Exposure, TranscriptArtifact
+from .processes import run_process
 
 
 _SUPPORTED_MEDIA_TYPES = {
@@ -114,6 +115,15 @@ class WhisperCppSpeechProvider:
         self._max_audio_bytes = max_audio_bytes
         self._max_output_bytes = max_output_bytes
 
+    def configuration_fingerprint(self):
+        return [
+            str(self._executable),
+            {
+                key: [str(value.path), value.sha256]
+                for key, value in self._models.items()
+            },
+        ]
+
     async def transcribe(
         self, audio: AudioArtifact, config: AdapterRef
     ) -> TranscriptArtifact:
@@ -143,7 +153,6 @@ class WhisperCppSpeechProvider:
             temp_root = Path(directory)
             audio_path = temp_root / f"input{suffix}"
             output_prefix = temp_root / "transcript"
-            stderr_path = temp_root / "stderr.log"
             await asyncio.to_thread(audio_path.write_bytes, audio.content)
 
             command = [
@@ -156,51 +165,27 @@ class WhisperCppSpeechProvider:
                 str(output_prefix),
                 "--no-prints",
             ]
-            with stderr_path.open("wb") as stderr_file:
-                try:
-                    process = await asyncio.create_subprocess_exec(
-                        *command,
-                        stdin=asyncio.subprocess.DEVNULL,
-                        stdout=asyncio.subprocess.DEVNULL,
-                        stderr=stderr_file,
-                    )
-                except OSError as exc:
-                    raise ProviderError(
-                        f"could not start whisper.cpp: {type(exc).__name__}"
-                    ) from exc
-                try:
-                    await asyncio.wait_for(
-                        process.wait(), timeout=self._timeout_seconds
-                    )
-                except TimeoutError as exc:
-                    process.kill()
-                    await process.wait()
-                    raise ProviderError("whisper.cpp timed out") from exc
-                except asyncio.CancelledError:
-                    process.kill()
-                    await process.wait()
-                    raise
-
-            if process.returncode != 0:
-                detail = await asyncio.to_thread(_read_tail, stderr_path, 1000)
-                suffix_message = f": {detail}" if detail else ""
-                raise ProviderError(
-                    f"whisper.cpp exited with {process.returncode}{suffix_message}"
-                )
-
             output_path = output_prefix.with_suffix(".json")
+            try:
+                returncode, _, _ = await run_process(
+                    command,
+                    timeout=self._timeout_seconds,
+                    output_path=output_path,
+                    max_file_bytes=self._max_output_bytes,
+                )
+            except OSError as exc:
+                raise ProviderError("could not start whisper.cpp") from exc
+            if returncode != 0:
+                raise ProviderError(f"whisper.cpp exited with {returncode}")
+
             document = await asyncio.to_thread(
                 _read_limited, output_path, self._max_output_bytes
             )
             return _parse_transcript(document, model_id)
 
-    async def _verify_model(
-        self, model_id: str, model: WhisperCppModel
-    ) -> None:
+    async def _verify_model(self, model_id: str, model: WhisperCppModel) -> None:
         if not model.path.is_file():
-            raise ConfigurationError(
-                f"whisper.cpp model does not exist: {model.path}"
-            )
+            raise ConfigurationError(f"whisper.cpp model does not exist: {model.path}")
         if model.sha256 is not None:
             digest = await asyncio.to_thread(_sha256_file, model.path)
             if digest != model.sha256:
@@ -208,18 +193,14 @@ class WhisperCppSpeechProvider:
                     f"whisper.cpp model '{model_id}' failed SHA-256 verification"
                 )
 
-    def _arguments(
-        self, config: AdapterRef, model: WhisperCppModel
-    ) -> list[str]:
+    def _arguments(self, config: AdapterRef, model: WhisperCppModel) -> list[str]:
         arguments = ["--model", str(model.path)]
         language = config.settings.get("language")
         if language is not None:
             if not isinstance(language, str) or not re.fullmatch(
                 r"(?:auto|[A-Za-z]{2,3}(?:-[A-Za-z]{2,8})?)", language
             ):
-                raise ConfigurationError(
-                    "language must be 'auto' or a language code"
-                )
+                raise ConfigurationError("language must be 'auto' or a language code")
             arguments.extend(["--language", language])
         translate = config.settings.get("translate", False)
         if not isinstance(translate, bool):
@@ -281,7 +262,11 @@ def _read_limited(path: Path, maximum: int) -> bytes:
     if size > maximum:
         raise ProviderError("whisper.cpp JSON output exceeded the size limit")
     try:
-        return path.read_bytes()
+        with path.open("rb") as file:
+            document = file.read(maximum + 1)
+        if len(document) > maximum:
+            raise ProviderError("whisper.cpp JSON output exceeded the size limit")
+        return document
     except OSError as exc:
         raise ProviderError("could not read whisper.cpp JSON output") from exc
 
@@ -309,9 +294,7 @@ def _parse_transcript(document: bytes, model_id: str) -> TranscriptArtifact:
         raise ProviderError("whisper.cpp JSON output has no transcription array")
     texts: list[str] = []
     for segment in segments:
-        if not isinstance(segment, Mapping) or not isinstance(
-            segment.get("text"), str
-        ):
+        if not isinstance(segment, Mapping) or not isinstance(segment.get("text"), str):
             raise ProviderError("whisper.cpp returned a malformed segment")
         texts.append(segment["text"])
     text = "".join(texts).strip()

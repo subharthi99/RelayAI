@@ -2,7 +2,7 @@
 
 ## Target
 
-**RelayAI Desktop Alpha 0.6.0 — macOS private dictation**
+**RelayAI Desktop Alpha 0.7.0 — macOS private dictation**
 
 The milestone is complete when a new user can install one macOS application,
 grant permissions, hold a global hotkey, speak, and receive locally transcribed
@@ -15,7 +15,7 @@ but are not release blockers for this alpha.
 
 ## Entry state
 
-RelayAI `0.4.1` already provides:
+RelayAI `0.5.0` provides:
 
 - policy-aware prepare and dispatch orchestration;
 - safe local `whisper.cpp` audio-file execution;
@@ -25,7 +25,7 @@ RelayAI `0.4.1` already provides:
 
 ## Delivery sequence
 
-### 0.5.0 — desktop foundation
+### 0.6.0 — desktop foundation
 
 - Create the Tauri/Rust/React macOS shell.
 - Define a versioned, typed Python↔Tauri IPC protocol.
@@ -38,7 +38,7 @@ Exit criterion: the desktop shell can list pipelines, execute a fixture audio
 run through the sidecar, cancel it, and display its receipt without bypassing
 core policy checks.
 
-### 0.6.0 — usable private dictation alpha
+### 0.7.0 — usable private dictation alpha
 
 - Capture the selected microphone as supported `whisper.cpp` audio.
 - Register push-to-talk and toggle global hotkeys.

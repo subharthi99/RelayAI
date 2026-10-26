@@ -6,16 +6,16 @@
   "additionalProperties": false,
   "required": ["schema_version", "id", "name", "transcription", "destinations"],
   "properties": {
-    "schema_version": { "const": 1 },
-    "id": { "type": "string", "minLength": 1 },
-    "name": { "type": "string", "minLength": 1 },
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "name": { "type": "string", "minLength": 1, "pattern": "\\S" },
     "description": { "type": "string" },
     "capture": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "activation": { "enum": ["push_to_talk", "toggle"] },
-        "source": { "type": "string", "minLength": 1 }
+        "source": { "type": "string", "minLength": 1, "pattern": "\\S" }
       }
     },
     "transcription": { "$ref": "#/$defs/adapterRef" },
@@ -27,10 +27,16 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["enabled"],
+      "allOf": [
+        {
+          "if": { "properties": { "enabled": { "const": true } }, "required": ["enabled"] },
+          "then": { "required": ["adapter"] }
+        }
+      ],
       "properties": {
         "enabled": { "type": "boolean" },
         "adapter": { "$ref": "#/$defs/adapterRef" },
-        "prompt_id": { "type": "string", "minLength": 1 }
+        "prompt_id": { "type": "string", "minLength": 1, "pattern": "\\S" }
       }
     },
     "policy": {
@@ -54,9 +60,9 @@
       "additionalProperties": false,
       "required": ["adapter_id"],
       "properties": {
-        "adapter_id": { "type": "string", "minLength": 1 },
+        "adapter_id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "settings": { "type": "object" },
-        "credential_id": { "type": "string", "minLength": 1 }
+        "credential_id": { "type": "string", "minLength": 1, "pattern": "\\S" }
       }
     },
     "destinationRef": {
@@ -64,10 +70,10 @@
       "additionalProperties": false,
       "required": ["id", "adapter_id"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "adapter_id": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
+        "adapter_id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "settings": { "type": "object" },
-        "credential_id": { "type": "string", "minLength": 1 }
+        "credential_id": { "type": "string", "minLength": 1, "pattern": "\\S" }
       }
     }
   }

@@ -85,13 +85,9 @@ history = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))
 
 assert receipt["status"] == "succeeded"
 assert receipt["final_text"] == "RelayAI routed this voice note locally."
-assert receipt["exposure_events"] == [
-    {
-        "adapter_id": "local.whisper_cpp",
-        "exposure": "local",
-        "stage": "transcription",
-    }
-]
+assert len(receipt["exposure_events"]) == 2
+assert all(event["exposure"] == "local" and event["outcome"] == "succeeded"
+           for event in receipt["exposure_events"])
 assert history and history[0]["id"] == receipt["id"]
 
 print("RelayAI terminal demo")

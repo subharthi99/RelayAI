@@ -76,7 +76,7 @@ Does not require authentication.
 ```json
 {
   "status": "ok",
-  "version": "0.4.1"
+  "version": "0.5.0"
 }
 ```
 
@@ -97,7 +97,9 @@ Returns safe summaries ordered by pipeline ID.
 
 ### `GET /v1/pipelines/{pipeline_id}`
 
-Returns the complete secret-free pipeline document. Pipeline IDs are URL-decoded
+Returns the complete validated pipeline document. Known credential fields and
+credential-bearing URLs are rejected on import; arbitrary text may still contain
+private information. Pipeline IDs are URL-decoded
 and cannot contain `/`.
 
 Returns `404` when the pipeline does not exist.

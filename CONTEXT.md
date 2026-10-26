@@ -130,7 +130,8 @@ the raw transcript. Destination failures never erase transcription artifacts.
   or alter the URL.
 - Imported pipelines reject unknown schema versions, embedded credentials,
   duplicate destination IDs, and unsafe or malformed configuration.
-- Exported pipelines contain no secrets.
+- Export validates known credential fields and credential-bearing URL patterns;
+  arbitrary free text must still be reviewed before sharing.
 
 ## Architecture
 
@@ -184,8 +185,9 @@ the raw transcript. Destination failures never erase transcription artifacts.
 
 ## First usable desktop milestone
 
-The next product milestone is **Desktop Alpha 0.6.0: macOS private dictation**.
-Version 0.5.0 establishes the typed IPC and packaged sidecar boundary; 0.6.0 adds
+Version 0.5.0 is the audited core-hardening release. The next product milestone
+is **Desktop Alpha 0.7.0: macOS private dictation**.
+Version 0.6.0 establishes the typed IPC and packaged sidecar boundary; 0.7.0 adds
 live capture, hotkeys, focused-field insertion, permission recovery, history UI,
 and a signed/notarized distribution. The milestone is defined by observable
 release gates rather than completion of every V1 feature. See

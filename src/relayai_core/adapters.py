@@ -17,6 +17,10 @@ class SpeechProvider(Protocol):
     adapter_id: str
     exposure: Exposure
 
+    def configuration_fingerprint(self) -> Any:
+        """Stable non-secret JSON configuration/digest; required for durable runs."""
+        ...
+
     async def transcribe(
         self, audio: AudioArtifact, config: AdapterRef
     ) -> TranscriptArtifact: ...
@@ -25,6 +29,8 @@ class SpeechProvider(Protocol):
 class RefinementProvider(Protocol):
     adapter_id: str
     exposure: Exposure
+
+    def configuration_fingerprint(self) -> Any: ...
 
     async def refine(
         self,
@@ -39,6 +45,8 @@ class ContextProvider(Protocol):
     adapter_id: str
     exposure: Exposure
 
+    def configuration_fingerprint(self) -> Any: ...
+
     async def collect(self, config: AdapterRef) -> ContextArtifact: ...
 
 
@@ -46,6 +54,8 @@ class Destination(Protocol):
     adapter_id: str
     exposure: Exposure
     effect: DestinationEffect
+
+    def configuration_fingerprint(self) -> Any: ...
 
     async def deliver(
         self,

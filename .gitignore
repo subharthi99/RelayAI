@@ -3,6 +3,10 @@ __pycache__/
 .pytest_cache/
 .venv/
 .ci-venv/
+.integration/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 dist/
 build/
 *.egg-info/

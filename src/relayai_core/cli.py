@@ -15,7 +15,7 @@ from .api import create_server
 from .destinations import FileDestination, ResultDestination
 from .engine import PipelineEngine
 from .errors import ConfigurationError, RelayAIError
-from .models import AudioArtifact
+from .models import AudioArtifact, RunStatus
 from .registry import AdapterRegistry
 from .serialization import export_pipeline, load_pipeline
 from .storage import SQLiteStore
@@ -70,11 +70,12 @@ def _read_audio(path_value: str) -> AudioArtifact:
     try:
         media_type = _LOCAL_AUDIO_TYPES[path.suffix.lower()]
     except KeyError as exc:
-        raise ConfigurationError(
-            "local audio must be FLAC, MP3, OGG, or WAV"
-        ) from exc
+        raise ConfigurationError("local audio must be FLAC, MP3, OGG, or WAV") from exc
     try:
-        content = path.read_bytes()
+        with path.open("rb") as file:
+            content = file.read(_MAX_LOCAL_AUDIO_BYTES + 1)
+        if len(content) > _MAX_LOCAL_AUDIO_BYTES:
+            raise ConfigurationError("audio file exceeds the 512 MiB local limit")
     except OSError as exc:
         raise ConfigurationError(f"cannot read audio file: {exc}") from exc
     return AudioArtifact(content, media_type)
@@ -97,7 +98,8 @@ def _pipeline_summary(pipeline: Any) -> dict[str, Any]:
         },
         "transcription": {
             "adapter_id": pipeline.transcription.adapter_id,
-            "uses_credential_reference": pipeline.transcription.credential_id is not None,
+            "uses_credential_reference": pipeline.transcription.credential_id
+            is not None,
         },
         "context_adapters": [item.adapter_id for item in pipeline.context],
         "refinement": {
@@ -153,7 +155,9 @@ async def _database(args: argparse.Namespace) -> int:
                 output.write_text(document + "\n", encoding="utf-8")
             except OSError as exc:
                 raise ConfigurationError(f"cannot write pipeline file: {exc}") from exc
-            _write_json({"id": pipeline.id, "output": str(output), "status": "exported"})
+            _write_json(
+                {"id": pipeline.id, "output": str(output), "status": "exported"}
+            )
         return 0
     raise AssertionError(f"unknown database command: {args.database_command}")
 
@@ -206,8 +210,7 @@ async def _run_local(args: argparse.Namespace) -> int:
     unknown_checksums = set(checksums) - set(model_paths)
     if unknown_checksums:
         raise ConfigurationError(
-            "--model-sha256 references unknown models: "
-            f"{sorted(unknown_checksums)}"
+            "--model-sha256 references unknown models: " f"{sorted(unknown_checksums)}"
         )
     if args.prepare_only and args.approve_destination:
         raise ConfigurationError(
@@ -230,14 +233,22 @@ async def _run_local(args: argparse.Namespace) -> int:
     if args.allow_file_root:
         registry.destinations.add(FileDestination(args.allow_file_root))
 
-    pipeline = _read_pipeline(args.pipeline)
-    audio = _read_audio(args.audio)
     store = SQLiteStore(args.database)
     await store.initialize()
-    await store.save_pipeline(pipeline)
-
-    engine = PipelineEngine(registry)
-    prepared = await engine.prepare(pipeline, audio)
+    engine = PipelineEngine(registry, store)
+    if args.resume_run:
+        if args.audio or args.prepare_only:
+            raise ConfigurationError(
+                "--resume-run cannot be combined with --audio or --prepare-only"
+            )
+        prepared = await store.get_prepared(args.resume_run)
+    else:
+        if not args.audio:
+            raise ConfigurationError("--audio is required for a new run")
+        pipeline = _read_pipeline(args.pipeline)
+        audio = _read_audio(args.audio)
+        await store.save_pipeline(pipeline)
+        prepared = await engine.prepare(pipeline, audio)
     if args.prepare_only:
         run = prepared.run
     else:
@@ -245,9 +256,10 @@ async def _run_local(args: argparse.Namespace) -> int:
             prepared,
             approved_destination_ids=args.approve_destination,
         )
-    await store.save_run(run)
     _write_json(asdict(run))
-    return 0
+    if run.status is RunStatus.PARTIAL:
+        return 3
+    return 0 if run.status in {RunStatus.SUCCEEDED, RunStatus.READY} else 1
 
 
 def _serve(args: argparse.Namespace) -> int:
@@ -281,17 +293,25 @@ def build_parser() -> argparse.ArgumentParser:
         prog="relayai",
         description="Manage RelayAI pipeline definitions and local receipts.",
     )
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     commands = parser.add_subparsers(dest="command", required=True)
 
-    pipeline = commands.add_parser("pipeline", help="validate and inspect pipeline files")
+    pipeline = commands.add_parser(
+        "pipeline", help="validate and inspect pipeline files"
+    )
     pipeline_commands = pipeline.add_subparsers(dest="pipeline_command", required=True)
     validate = pipeline_commands.add_parser("validate", help="validate a pipeline file")
     validate.add_argument("path")
-    inspect = pipeline_commands.add_parser("inspect", help="show a safe pipeline summary")
+    inspect = pipeline_commands.add_parser(
+        "inspect", help="show a safe pipeline summary"
+    )
     inspect.add_argument("path")
 
-    database = commands.add_parser("database", help="manage the local pipeline database")
+    database = commands.add_parser(
+        "database", help="manage the local pipeline database"
+    )
     database.add_argument("--database", required=True)
     database_commands = database.add_subparsers(
         dest="database_command",
@@ -313,7 +333,9 @@ def build_parser() -> argparse.ArgumentParser:
     history_list.add_argument("--limit", type=int, default=50)
     history_show = history_commands.add_parser("show", help="show a run receipt")
     history_show.add_argument("run_id")
-    history_purge = history_commands.add_parser("purge", help="delete selected receipts")
+    history_purge = history_commands.add_parser(
+        "purge", help="delete selected receipts"
+    )
     history_purge.add_argument("--pipeline-id")
     history_purge.add_argument("--before")
     history_purge.add_argument("--yes", action="store_true")
@@ -322,8 +344,14 @@ def build_parser() -> argparse.ArgumentParser:
         "run",
         help="execute a local whisper.cpp pipeline from an audio file",
     )
-    run.add_argument("--pipeline", required=True)
-    run.add_argument("--audio", required=True)
+    run_source = run.add_mutually_exclusive_group(required=True)
+    run_source.add_argument("--pipeline")
+    run_source.add_argument(
+        "--resume-run",
+        metavar="ID",
+        help="resume a saved ready or pending run without retranscription",
+    )
+    run.add_argument("--audio")
     run.add_argument("--database", required=True)
     run.add_argument("--whisper-cli", required=True)
     run.add_argument(
@@ -398,4 +426,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (RelayAIError, OSError) as exc:
         print(f"relayai: error: {exc}", file=sys.stderr)
         return 2
+    except KeyboardInterrupt:
+        return 130
     return 1

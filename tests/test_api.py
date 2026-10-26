@@ -69,6 +69,15 @@ class LocalAPITests(unittest.TestCase):
             self.request("/v1/pipelines", authenticated=False)
         self.assertEqual(raised.exception.code, 401)
 
+    def test_non_ascii_bearer_is_rejected_without_handler_crash(self) -> None:
+        request = urllib.request.Request(
+            self.base_url + "/v1/pipelines",
+            headers={"Authorization": "Bearer " + "é" * 32},
+        )
+        with self.assertRaises(urllib.error.HTTPError) as raised:
+            urllib.request.urlopen(request, timeout=3)
+        self.assertEqual(raised.exception.code, 401)
+
     def test_pipeline_list_and_detail(self) -> None:
         with self.request("/v1/pipelines") as response:
             pipelines = json.load(response)

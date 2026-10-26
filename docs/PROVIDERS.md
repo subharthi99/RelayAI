@@ -25,6 +25,8 @@ two classifications.
 - Network adapters require HTTPS.
 - URLs cannot contain credentials, queries, or fragments.
 - HTTP redirects are not followed.
+- Environment/system proxies are disabled; `localhost` is canonicalized to
+  literal loopback before local-provider requests.
 - Speech uploads default to a 25 MiB limit.
 - Provider responses default to a 2 MiB limit.
 - Unknown provider settings and malformed responses are rejected.
@@ -35,6 +37,12 @@ two classifications.
 
 A host should use a unique adapter ID for each trust boundary, such as
 `cloud.team_speech` and `local.ollama_refinement`.
+
+Persistent engines require a stable `configuration_fingerprint()` on each
+adapter. Reference implementations bind their non-secret configuration to the
+reviewed run. Registered code is trusted; `local_only` is not a sandbox for
+arbitrary plugins and rejects unsandboxed executable destinations. Network
+requests already sent may complete after task cancellation.
 
 ## Credential resolver
 

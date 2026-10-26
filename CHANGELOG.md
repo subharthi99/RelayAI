@@ -4,7 +4,31 @@ All notable changes to RelayAI are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.0] — 2026-10-24
+
+### Security
+
+- Validate adapter metadata and bind reviewed text/configuration before dispatch.
+- Atomically claim persisted runs; reject concurrent and stale replay attempts.
+- Harden file writes with no-follow descriptor traversal, exclusive create,
+  and explicit atomic overwrite.
+- Kill POSIX process groups on cancellation/timeouts; bound streaming output and
+  monitor generated transcript files during execution.
+- Disable inherited HTTP proxies; reject webhook redirects and insecure URLs.
+- Reserve SQLite files at 0600 and secure database sidecars.
+- Reject duplicate JSON keys, malformed roots/types, non-finite numbers, and
+  credential-bearing URL values.
+
+### Execution and verification
+
+- Persist failures, denials, cancellations, partial artifacts, and exposure
+  attempts, including destination delivery.
+- Resume previews with `--resume-run`; continue pending approvals without
+  repeating completed actions. Unsuccessful runs return nonzero CLI exits.
+- Require configuration fingerprints for adapters used by persistent engines.
+- Add independent schema fixtures, adversarial regressions, real loopback HTTP
+  tests, and pinned whisper.cpp/model integration on Linux and macOS.
+- Add [audit remediation and compatibility notes](docs/HARDENING_AUDIT.md).
 
 ### Fixed
 

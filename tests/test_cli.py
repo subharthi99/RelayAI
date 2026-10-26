@@ -24,6 +24,97 @@ def invoke(*args: str) -> tuple[int, str, str]:
 
 
 class CLITests(unittest.TestCase):
+    def test_resume_saved_preview_without_transcribing_again(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            executable, model, audio = self._local_runtime(root)
+            common = (
+                "run",
+                "--database",
+                str(root / "history.db"),
+                "--whisper-cli",
+                str(executable),
+                "--model",
+                f"small={model}",
+            )
+            status, output, error = invoke(
+                *common,
+                "--pipeline",
+                str(LOCAL_EXAMPLE),
+                "--audio",
+                str(audio),
+                "--prepare-only",
+            )
+            self.assertEqual(status, 0, error)
+            run_id = json.loads(output)["id"]
+            executable.write_text(
+                f"#!{sys.executable}\nraise RuntimeError('must not transcribe again')\n"
+            )
+            status, output, error = invoke(*common, "--resume-run", run_id)
+            self.assertEqual(status, 0, error)
+            self.assertEqual(json.loads(output)["status"], "succeeded")
+            status, _, error = invoke(*common, "--resume-run", run_id)
+            self.assertEqual(status, 2)
+
+    def test_failed_delivery_has_nonzero_exit_and_preserved_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            executable, model, audio = self._local_runtime(root)
+            allowed = root / "allowed"
+            allowed.mkdir()
+            definition = json.loads(LOCAL_EXAMPLE.read_text())
+            definition["destinations"] = [
+                {
+                    "id": "file",
+                    "adapter_id": "builtin.file",
+                    "settings": {"path": str(root / "outside")},
+                }
+            ]
+            path = root / "pipeline.json"
+            path.write_text(json.dumps(definition))
+            status, output, _ = invoke(
+                "run",
+                "--pipeline",
+                str(path),
+                "--audio",
+                str(audio),
+                "--database",
+                str(root / "history.db"),
+                "--whisper-cli",
+                str(executable),
+                "--model",
+                f"small={model}",
+                "--allow-file-root",
+                str(allowed),
+            )
+            self.assertEqual(status, 1)
+            self.assertEqual(json.loads(output)["status"], "failed")
+
+    def test_failed_transcription_is_in_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            executable, model, audio = self._local_runtime(root)
+            executable.write_text(f"#!{sys.executable}\nimport sys; sys.exit(7)\n")
+            status, _, _ = invoke(
+                "run",
+                "--pipeline",
+                str(LOCAL_EXAMPLE),
+                "--audio",
+                str(audio),
+                "--database",
+                str(root / "history.db"),
+                "--whisper-cli",
+                str(executable),
+                "--model",
+                f"small={model}",
+            )
+            self.assertEqual(status, 2)
+            status, output, error = invoke(
+                "history", "--database", str(root / "history.db"), "list"
+            )
+            self.assertEqual(status, 0, error)
+            self.assertEqual(json.loads(output)[0]["status"], "failed")
+
     def _local_runtime(self, root: Path) -> tuple[Path, Path, Path]:
         executable = root / "whisper-cli"
         executable.write_text(
